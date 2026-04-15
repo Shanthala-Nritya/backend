@@ -34,10 +34,11 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 const defaultOrigins = [
+  'https://www.shanthaladance.com/',
+  'https://shanthalanritya.vercel.app/',
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://shanthala.vercel.app',
-  'https://www.shanthala.vercel.app'
+
 ];
 
 const envOrigins = (process.env.CORS_ORIGINS || '')
