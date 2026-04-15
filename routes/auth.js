@@ -30,7 +30,8 @@ function getAttemptState(key) {
 }
 
 router.post('/login', (req, res) => {
-  const { username, password } = req.body;
+  const username = String(req.body?.username ?? '').trim();
+  const password = String(req.body?.password ?? '').trim();
   const attemptKey = getClientKey(req, username);
   const attemptState = getAttemptState(attemptKey);
 
