@@ -39,15 +39,26 @@ const uploadPhoto = (req, res, next) => {
 // Get all photos (public)
 router.get('/', async (req, res) => {
   try {
-    const { category } = req.query;
+    const { category, limit = 100, skip = 0 } = req.query;
     const filter = category ? { category } : {};
-    const photos = await Photo.find(filter).sort({ createdAt: -1 });
+    const pageLimit = Math.min(parseInt(limit) || 100, 500); // Cap at 500
+    const pageSkip = Math.max(parseInt(skip) || 0, 0);
+    
+    // Enable external sorting to handle large datasets
+    const photos = await Photo.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(pageLimit)
+      .skip(pageSkip)
+      .lean() // Use lean() for better performance on read-only queries
+      .allowDiskUse(); // Explicitly enable external sorting for large datasets
+    
     res.json(photos);
   } catch (err) {
     console.error('Error fetching photos:', {
       error: err.message,
-      stack: err.stack,
-      category: req.query.category
+      category: req.query.category,
+      limit: req.query.limit,
+      skip: req.query.skip
     });
     res.status(500).json({ 
       message: process.env.NODE_ENV === 'development' ? err.message : 'Server error',

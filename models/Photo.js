@@ -10,4 +10,8 @@ const PhotoSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 
+// Add index for efficient sorting
+PhotoSchema.index({ createdAt: -1 });
+PhotoSchema.index({ category: 1, createdAt: -1 });
+
 module.exports = mongoose.model('Photo', PhotoSchema);
