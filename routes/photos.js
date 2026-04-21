@@ -40,17 +40,18 @@ const uploadPhoto = (req, res, next) => {
 router.get('/', async (req, res) => {
   try {
     const { category, limit = 100, skip = 0 } = req.query;
-    const filter = category ? { category } : {};
     const pageLimit = Math.min(parseInt(limit) || 100, 500); // Cap at 500
     const pageSkip = Math.max(parseInt(skip) || 0, 0);
     
-    // Enable external sorting to handle large datasets
-    const photos = await Photo.find(filter)
-      .sort({ createdAt: -1 })
-      .limit(pageLimit)
-      .skip(pageSkip)
-      .lean() // Use lean() for better performance on read-only queries
-      .allowDiskUse(); // Explicitly enable external sorting for large datasets
+    // Use aggregation pipeline with allowDiskUse for large dataset sorting
+    const pipeline = [
+      ...(category ? [{ $match: { category } }] : []),
+      { $sort: { createdAt: -1 } },
+      { $skip: pageSkip },
+      { $limit: pageLimit }
+    ];
+    
+    const photos = await Photo.aggregate(pipeline).allowDiskUse(true);
     
     res.json(photos);
   } catch (err) {
