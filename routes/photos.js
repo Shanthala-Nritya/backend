@@ -44,7 +44,15 @@ router.get('/', async (req, res) => {
     const photos = await Photo.find(filter).sort({ createdAt: -1 });
     res.json(photos);
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching photos:', {
+      error: err.message,
+      stack: err.stack,
+      category: req.query.category
+    });
+    res.status(500).json({ 
+      message: process.env.NODE_ENV === 'development' ? err.message : 'Server error',
+      error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 });
 

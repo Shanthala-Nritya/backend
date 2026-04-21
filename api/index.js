@@ -21,9 +21,10 @@ try {
   requireEnv('JWT_SECRET');
   requireEnv('ADMIN_USERNAME');
   requireEnv('ADMIN_PASSWORD');
+  console.log('✓ All required environment variables configured');
 } catch (error) {
   startupConfigError = error;
-  console.error('Startup configuration error:', error.message);
+  console.error('✗ Startup configuration error:', error.message);
 }
 
 const uploadsDir = isVercel
@@ -120,7 +121,18 @@ app.get('/api/health', (_req, res) => {
   res.status(startupConfigError ? 500 : 200).json({
     ok: !startupConfigError,
     config: startupConfigError ? startupConfigError.message : 'ok',
-    dbState: mongoose.connection.readyState
+    dbState: mongoose.connection.readyState,
+    dbStateInfo: {
+      0: 'disconnected',
+      1: 'connected',
+      2: 'connecting',
+      3: 'disconnecting'
+    }[mongoose.connection.readyState],
+    isVercel,
+    mongodb: {
+      uri: process.env.MONGO_URI ? '✓ configured' : '✗ missing',
+      dbName: process.env.MONGO_DB_NAME || 'default'
+    }
   });
 });
 
@@ -141,6 +153,15 @@ const connectToDatabase = async () => {
   try {
     await connectPromise;
     isConnected = true;
+    console.log('MongoDB connected successfully');
+  } catch (err) {
+    console.error('MongoDB connection failed:', {
+      message: err.message,
+      code: err.code,
+      timeout: err.message.includes('timeout'),
+      isVercel
+    });
+    throw err;
   } finally {
     connectPromise = null;
   }
@@ -156,20 +177,32 @@ mongoose.connection.on('error', () => {
 
 app.use(async (req, res, next) => {
   if (startupConfigError) {
-    return res.status(500).json({ message: startupConfigError.message });
+    console.error('Startup config error detected:', startupConfigError.message);
+    return res.status(500).json({ 
+      message: startupConfigError.message,
+      issue: 'Missing required environment variables'
+    });
   }
 
   try {
     await connectToDatabase();
 
     if (mongoose.connection.readyState !== 1) {
-      return res.status(500).json({ message: 'Database is not connected' });
+      console.error('Database connection state is not connected:', mongoose.connection.readyState);
+      return res.status(500).json({ message: 'Database is not connected', dbState: mongoose.connection.readyState });
     }
 
     next();
   } catch (err) {
-    console.error('MongoDB Error:', err);
-    res.status(500).json({ message: `Database connection failed: ${err.message}` });
+    console.error('MongoDB Connection Error:', {
+      message: err.message,
+      code: err.code,
+      stack: err.stack
+    });
+    res.status(500).json({ 
+      message: `Database connection failed: ${err.message}`,
+      code: err.code
+    });
   }
 });
 
