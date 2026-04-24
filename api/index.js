@@ -135,8 +135,6 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-app.use('/api/auth', require('../routes/auth'));
-
 const connectToDatabase = async () => {
   if (isConnected && mongoose.connection.readyState === 1) return;
   if (connectPromise) {
@@ -213,6 +211,7 @@ app.use(async (req, res, next) => {
   }
 });
 
+app.use('/api/auth', require('../routes/auth'));
 app.use('/api/queries', require('../routes/queries'));
 app.use('/api/photos', require('../routes/photos'));
 app.use('/api/blogs', require('../routes/blogs'));
