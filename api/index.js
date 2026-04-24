@@ -9,7 +9,6 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 const { requireEnv } = require('../config');
-const { hasAnyAdmin, syncAdminFromEnv } = require('../services/adminBootstrap');
 
 const app = express();
 let isConnected = false;
@@ -150,14 +149,6 @@ const connectToDatabase = async () => {
   try {
     await connectPromise;
     isConnected = true;
-    const bootstrapResult = await syncAdminFromEnv();
-
-    if (bootstrapResult.bootstrapped) {
-      console.log(`Admin credentials synced to database for ${bootstrapResult.username}`);
-    } else if (!(await hasAnyAdmin())) {
-      console.warn('No admin user found in database and no bootstrap credentials were provided.');
-    }
-
     console.log('MongoDB connected successfully');
   } catch (err) {
     console.error('MongoDB connection failed:', {
