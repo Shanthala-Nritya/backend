@@ -19,6 +19,10 @@ const AdminSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  passwordChangedAt: {
+    type: Date,
+    default: Date.now
+  },
   lastLoginAt: {
     type: Date,
     default: null
@@ -29,6 +33,7 @@ AdminSchema.statics.normalizeUsername = normalizeUsername;
 
 AdminSchema.methods.setPassword = async function setPassword(password) {
   this.passwordHash = await bcrypt.hash(String(password || ''), SALT_ROUNDS);
+  this.passwordChangedAt = new Date();
 };
 
 AdminSchema.methods.comparePassword = function comparePassword(password) {

@@ -3,6 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { getAuthConfig } = require('../config');
 const Admin = require('../models/Admin');
+const auth = require('../middleware/auth');
 
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
@@ -70,6 +71,45 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error('Admin login failed:', error);
     return res.status(500).json({ message: 'Unable to complete login right now.' });
+  }
+});
+
+router.patch('/change-password', auth, async (req, res) => {
+  const currentPassword = String(req.body?.currentPassword ?? '').trim();
+  const newPassword = String(req.body?.newPassword ?? '').trim();
+  const confirmPassword = String(req.body?.confirmPassword ?? '').trim();
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    return res.status(400).json({ message: 'Current password, new password, and confirmation are required.' });
+  }
+
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({ message: 'New password and confirmation do not match.' });
+  }
+
+  if (newPassword.length < 10) {
+    return res.status(400).json({ message: 'New password must be at least 10 characters long.' });
+  }
+
+  if (currentPassword === newPassword) {
+    return res.status(400).json({ message: 'New password must be different from your current password.' });
+  }
+
+  try {
+    const admin = req.adminRecord;
+    const matches = await admin.comparePassword(currentPassword);
+
+    if (!matches) {
+      return res.status(401).json({ message: 'Current password is incorrect.' });
+    }
+
+    await admin.setPassword(newPassword);
+    await admin.save();
+
+    return res.json({ message: 'Password updated successfully. Please sign in again.' });
+  } catch (error) {
+    console.error('Change password failed:', error);
+    return res.status(500).json({ message: 'Unable to update password right now.' });
   }
 });
 
