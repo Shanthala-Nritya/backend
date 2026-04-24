@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { getAuthConfig } = require('../config');
+const Admin = require('../models/Admin');
 
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
@@ -29,7 +30,7 @@ function getAttemptState(key) {
   return existing;
 }
 
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const username = String(req.body?.username ?? '').trim();
   const password = String(req.body?.password ?? '').trim();
   const attemptKey = getClientKey(req, username);
@@ -48,17 +49,28 @@ router.post('/login', (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 
-  if (username === authConfig.adminUsername && password === authConfig.adminPassword) {
-    attempts.delete(attemptKey);
-    const token = jwt.sign({ username }, authConfig.jwtSecret, { expiresIn: '12h' });
-    return res.json({
-      token,
-      admin: { username }
-    });
-  }
+  try {
+    const normalizedUsername = Admin.normalizeUsername(username);
+    const admin = await Admin.findOne({ username: normalizedUsername });
 
-  attemptState.count += 1;
-  res.status(401).json({ message: 'Invalid credentials' });
+    if (admin && await admin.comparePassword(password)) {
+      attempts.delete(attemptKey);
+      admin.lastLoginAt = new Date();
+      await admin.save();
+
+      const token = jwt.sign({ username: admin.username }, authConfig.jwtSecret, { expiresIn: '12h' });
+      return res.json({
+        token,
+        admin: { username: admin.username }
+      });
+    }
+
+    attemptState.count += 1;
+    return res.status(401).json({ message: 'Invalid credentials' });
+  } catch (error) {
+    console.error('Admin login failed:', error);
+    return res.status(500).json({ message: 'Unable to complete login right now.' });
+  }
 });
 
 module.exports = router;

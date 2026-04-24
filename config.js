@@ -8,15 +8,26 @@ function requireEnv(name) {
   return value
 }
 
+function optionalEnv(name) {
+  return process.env[name]?.trim() || ''
+}
+
 function getAuthConfig() {
   return {
-    adminUsername: requireEnv('ADMIN_USERNAME'),
-    adminPassword: requireEnv('ADMIN_PASSWORD'),
     jwtSecret: requireEnv('JWT_SECRET'),
+  }
+}
+
+function getAdminBootstrapConfig() {
+  return {
+    adminUsername: optionalEnv('ADMIN_USERNAME'),
+    adminPassword: optionalEnv('ADMIN_PASSWORD'),
   }
 }
 
 module.exports = {
   requireEnv,
+  optionalEnv,
   getAuthConfig,
+  getAdminBootstrapConfig,
 }
